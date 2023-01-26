@@ -12,6 +12,7 @@ All the requirements are provided below:
 ```
 pip install datasets
 pip install flax
+pip install augmax
 pip install -qq nest_asyncio
 pip install matplotlib==3.5
 pip install pandas==1.4
