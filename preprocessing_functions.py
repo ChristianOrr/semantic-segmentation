@@ -91,3 +91,18 @@ def grads_zeroed(grads):
                 max_grad = layer_max
     
     return min_grad == max_grad == 0
+
+
+def create_infinite_generator(dataset):
+    """
+    Converts a hugginface dataset into an infinite generator.
+    The dataset is shuffled and batched into single samples.
+    Args:
+        dataset: Huggingface dataset.
+    Yields:
+        Next random sample.
+    """
+    while True:
+        gen = dataset.shuffle().iter(batch_size=1)
+        for _ in range(dataset.num_rows - 1):
+            yield next(gen)
