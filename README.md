@@ -14,8 +14,8 @@ pip install datasets
 pip install flax
 pip install augmax
 pip install -qq nest_asyncio
-pip install matplotlib==3.5
-pip install pandas==1.4
-pip install jupyter==1.0
-pip install scikit-learn==1.1
+pip install matplotlib
+pip install pandas
+pip install jupyter
+pip install scikit-learn
 ```

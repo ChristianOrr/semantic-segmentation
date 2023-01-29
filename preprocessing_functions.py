@@ -1,8 +1,10 @@
 import numpy as np
 import jax
 import jax.numpy as jnp
+from functools import partial
 
 
+@partial(jax.jit, static_argnames=['num_classes'])
 def binarize_target(target_ids, num_classes):
     """
     Converts a single array of target IDs to binary form.
@@ -14,26 +16,29 @@ def binarize_target(target_ids, num_classes):
     Returns:
         A binarized array of class IDs. 
     """
-    (dim_x, dim_y) = target_ids.shape
-    binary_labels = np.zeros(shape=(dim_x, dim_y, num_classes))
+    binary_labels = []
     for class_id in range(num_classes):
-        binary_labels[:, :, class_id] = target_ids == class_id
-    return jnp.array(binary_labels)
+        binary_labels.append(target_ids == class_id)
+    binary_labels = jnp.array(binary_labels)
+    # Move class labels to last dimension
+    binary_labels = jnp.moveaxis(binary_labels, source=0, destination=-1)
+    return binary_labels
 
-
-def prep_data(data, height, width, num_classes):
+@partial(jax.jit, static_argnames=['num_classes', 'height', 'width'])
+def prep_data(input, target_ids, height, width, num_classes):
     """
     Prepares the data by resizing to the requested height/width and
     binarizing the target ID's.
     Args:
-        data: Dictionary containing a single input image and annotation.
+        input: A single RGB input image.
+        target_ids: A single segmentation mask for the image.
         height: Height dimension for resizing the images.
         width: Width dimension for resizing the images.
         num_classes: Total number of distinct classes.
     Returns:
         The resized input image and resized binarized target ID's.
     """
-    input, target_ids = jnp.array(data["image"][0]), np.array(data["annotation"][0])
+    # input, target_ids = jnp.array(data["image"][0]), jnp.array(data["annotation"][0])
     target_ids_binary = binarize_target(target_ids, num_classes)
     # Downsample the image
     input = jax.image.resize(input, shape=(height, width, 3), method="bilinear")
@@ -58,7 +63,12 @@ def prep_data_batch(data_generator, batch_size, height, width, num_classes):
     targets = []
     for _ in range(batch_size):
         data = next(data_generator)
-        input, target_ids_binary = prep_data(data, height, width, num_classes)
+        input, target_ids = jnp.array(data["image"][0]), jnp.array(data["annotation"][0])
+        # Don't add the image if its not RGB
+        if len(input.shape) == 2 or input.shape[-1] == 1:
+            print("Grayscale Image!")
+            continue
+        input, target_ids_binary = prep_data(input, target_ids, height, width, num_classes)
         inputs.append(input)
         targets.append(target_ids_binary)
     inputs = jnp.array(inputs)
