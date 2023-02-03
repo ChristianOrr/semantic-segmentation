@@ -66,7 +66,7 @@ def prep_data_batch(data_generator, batch_size, height, width, num_classes):
         input, target_ids = jnp.array(data["image"][0]), jnp.array(data["annotation"][0])
         # Don't add the image if its not RGB
         if len(input.shape) == 2 or input.shape[-1] == 1:
-            print("Grayscale Image!")
+            # print("Grayscale Image!")
             continue
         input, target_ids_binary = prep_data(input, target_ids, height, width, num_classes)
         inputs.append(input)
@@ -101,6 +101,29 @@ def grads_zeroed(grads):
                 max_grad = layer_max
     
     return min_grad == max_grad == 0
+
+
+def grads_vanished_or_exploded(grads):
+    """
+    Checks if the gradients have vanished or exploded.
+    Args:
+        grads: The gradinents from the loss function.
+    Returns:
+        Boolean, True for vanished or exploded gradients, false otherwise.
+    """
+    params = grads["params"]
+    mean_grads = []
+
+    for layer in params.values():
+        for weights in layer.values():
+            # Check minimum weight and update if necessary
+            layer_mean = weights.mean()
+            mean_grads.append(layer_mean)
+
+    mean_grads = jnp.array(mean_grads).mean()
+    has_vanished = mean_grads < 0.000001
+    has_exploded = mean_grads > 1000000
+    return has_vanished or has_exploded
 
 
 def create_infinite_generator(dataset):

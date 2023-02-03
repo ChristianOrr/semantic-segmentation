@@ -11,7 +11,7 @@ import augmax
 import orbax.checkpoint as orbax
 from unet_model import _unet
 from loss_functions import dice_loss, dice_loss_and_preds
-from preprocessing_functions import prep_data_batch, grads_zeroed, create_infinite_generator
+from preprocessing_functions import prep_data_batch, create_infinite_generator, grads_vanished_or_exploded
 import nest_asyncio
 nest_asyncio.apply()
 import argparse
@@ -24,20 +24,20 @@ parser.add_argument("--num_classes", help="Number of classes in the dataset", de
 parser.add_argument("--weights_path", help='Path to save and load checkpoints', default="./checkpoints/unet/", required=False)
 parser.add_argument("--rng", help="Random number generator key", default=64, type=int, required=False)
 parser.add_argument("--print_freq", help="Frequency for displaying training loss", default=100, type=int, required=False)
-parser.add_argument("--lr", help="Initial value for learning rate.", default=0.05, type=float, required=False)
+parser.add_argument("--lr", help="Initial value for learning rate.", default=0.01, type=float, required=False)
 parser.add_argument("--min_lr", help="Minimum learning rate cap.", default=0.00001, type=float, required=False)
 parser.add_argument("--decay", help="Exponential decay rate.", default=0.99, type=float, required=False)
 parser.add_argument("--decay_start", help="The epoch to start decaying the learning rate.", default=1000, type=int, required=False)
 parser.add_argument("--decay_steps", help="Transition steps before next lr decay.", default=100, type=int, required=False)
 parser.add_argument("--height", help='Model image input height resolution', type=int, default=256)
 parser.add_argument("--width", help='Model image input height resolution', type=int, default=256)
-parser.add_argument("--batch_size", help='Batch size to use during training',type=int, default=22)
+parser.add_argument("--batch_size", help='Batch size to use during training',type=int, default=23)
 parser.add_argument("--num_epochs", help='Number of training epochs', type=int, default=100000)
-parser.add_argument("--save_freq", help='Model saving frequncy per steps', type=int, default=50)
+parser.add_argument("--save_freq", help='Model saving frequncy per steps', type=int, default=100)
 parser.add_argument("--val_epochs", help='Frequency for running evaluation', type=int, default=1000)
 parser.add_argument("--val_batches", help='Number of batches to process per evaluation', type=int, default=5)
-parser.add_argument("--augment", help="Performs augmentation on the RGB images.", action="store_true")
-parser.add_argument("--restore_checkpoint", help="Restores the latest checkpoint from the weights_path", action="store_true")
+parser.add_argument("--dont_augment", help="Prevents augmentation on the RGB images.", action="store_true")
+parser.add_argument("--dont_restore", help="Prevents restoring the latest checkpoint from the weights_path", action="store_true")
 args = parser.parse_args()
 
 
@@ -62,7 +62,7 @@ def main(args):
     dummy_x = jax.image.resize(dummy_x, shape=(height, width, 3), method="bilinear")
     rng_key = jax.random.PRNGKey(args.rng)
 
-    augment = args.augment
+    augment = not args.dont_augment
     augment_images = jax.jit(augmax.Chain(
     augmax.RandomContrast(range=(0, 0.3), p=1.0),
     augmax.RandomBrightness(range=(-0.6, 0.6), p=1.0),
@@ -93,7 +93,7 @@ def main(args):
     optimizer = optax.adam(learning_rate=schedule)
 
     # Restore latest checkpoint
-    restore_latest = args.restore_checkpoint
+    restore_latest = not args.dont_restore
     orbax_checkpointer = orbax.Checkpointer(orbax.PyTreeCheckpointHandler())
 
     variables = unet.init(rng_key, dummy_x)
@@ -155,8 +155,8 @@ def main(args):
         last_mean_loss = np.array(losses[-print_freq:]).mean()
         if epoch % print_freq == 0: print(f"\tLoss: {last_mean_loss :.2f}")
 
-        if grads_zeroed(grads):
-            print("Gradients are zeroed, exiting training run now...")
+        if grads_vanished_or_exploded(grads):
+            print("Gradients have vanished or exploded, exiting training run now...")
             break
 
         if epoch % save_steps == 0 and epoch != 0:
