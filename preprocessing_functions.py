@@ -1,4 +1,3 @@
-import numpy as np
 import jax
 import jax.numpy as jnp
 from functools import partial
@@ -76,33 +75,7 @@ def prep_data_batch(data_generator, batch_size, height, width, num_classes):
     return inputs, targets
 
 
-def grads_zeroed(grads):
-    """
-    Checks if the gradients have zeroed,
-    (due to the vanishing gradient problem).
-    Args:
-        grads: The gradinents from the loss function.
-    Returns:
-        Boolean, True for zeroed gradients, false otherwise.
-    """
-    params = grads["params"]
-    max_grad = 0
-    min_grad = 0
-
-    for layer in params.values():
-        for weights in layer.values():
-            # Check minimum weight and update if necessary
-            layer_min = weights.min()
-            if layer_min < min_grad:
-                min_grad = layer_min
-            # Check minimum weight and update if necessary
-            layer_max = weights.min()
-            if layer_max > max_grad:
-                max_grad = layer_max
-    
-    return min_grad == max_grad == 0
-
-
+@jax.jit
 def grads_vanished_or_exploded(grads):
     """
     Checks if the gradients have vanished or exploded.
@@ -120,10 +93,10 @@ def grads_vanished_or_exploded(grads):
             layer_mean = weights.mean()
             mean_grads.append(layer_mean)
 
-    mean_grads = jnp.array(mean_grads).mean()
-    has_vanished = mean_grads < 0.000001
-    has_exploded = mean_grads > 1000000
-    return has_vanished or has_exploded
+    mean_grads = jnp.absolute(jnp.array(mean_grads).mean())
+    has_vanished = mean_grads < 1e-9
+    has_exploded = mean_grads > 1e9
+    return has_vanished,  has_exploded
 
 
 def create_infinite_generator(dataset):
