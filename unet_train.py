@@ -22,6 +22,11 @@ parser = argparse.ArgumentParser(description='Script for training U-Net')
 parser.add_argument("--dataset_name", help='Dataset name to load from huggingface hub', default="scene_parse_150", required=False)
 parser.add_argument("--num_classes", help="Number of classes in the dataset", default=151, type=int, required=False)
 parser.add_argument("--weights_path", help='Path to save and load checkpoints', default="./checkpoints/unet/", required=False)
+parser.add_argument("--init_function", 
+                    help='Function for initializing the weights (not needed if restoring weights)' 
+                    'Options include: "he_normal", "he_uniform", "xavier_normal", "xavier_uniform", "kumar_normal", "yilmaz_normal"',
+                    default="yilmaz_normal", 
+                    required=False)
 parser.add_argument("--rng", help="Random number generator key", default=64, type=int, required=False)
 parser.add_argument("--print_freq", help="Frequency for displaying training loss", default=100, type=int, required=False)
 parser.add_argument("--lr", help="Initial value for learning rate.", default=0.01, type=float, required=False)
@@ -55,7 +60,7 @@ def main(args):
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     # Create the model object
-    unet = _unet(num_classes)
+    unet = _unet(num_classes, args.init_function)
     # Display the model details
     dummy_x = np.array(train_dataset[0]["image"])
     # Downsample the image
