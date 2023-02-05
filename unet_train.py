@@ -159,7 +159,7 @@ def main(args):
 
         losses.append(loss)
         last_mean_loss = np.array(losses[-print_freq:]).mean()
-        if epoch % print_freq == 0: print(f"\tLoss: {last_mean_loss :.2f}")
+        if epoch % print_freq == 0: print(f"\tLoss: {last_mean_loss :.2f} \tLearning Rate: {schedule(epoch) :.6f}")
 
         has_vanished,  has_exploded = grads_vanished_or_exploded(grads)
         if has_vanished:
