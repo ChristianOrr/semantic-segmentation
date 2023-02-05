@@ -30,10 +30,10 @@ parser.add_argument("--init_function",
 parser.add_argument("--rng", help="Random number generator key", default=64, type=int, required=False)
 parser.add_argument("--print_freq", help="Frequency for displaying training loss", default=10, type=int, required=False)
 parser.add_argument("--lr", help="Initial value for learning rate.", default=0.001, type=float, required=False)
-parser.add_argument("--min_lr", help="Minimum learning rate cap.", default=0.000001, type=float, required=False)
+parser.add_argument("--min_lr", help="Minimum learning rate cap.", default=0.00001, type=float, required=False)
 parser.add_argument("--decay", help="Exponential decay rate.", default=0.99, type=float, required=False)
 parser.add_argument("--decay_start", help="The epoch to start decaying the learning rate.", default=100, type=int, required=False)
-parser.add_argument("--decay_steps", help="Transition steps before next lr decay.", default=10, type=int, required=False)
+parser.add_argument("--decay_steps", help="Transition steps before next lr decay.", default=100, type=int, required=False)
 parser.add_argument("--height", help='Model image input height resolution', type=int, default=256)
 parser.add_argument("--width", help='Model image input height resolution', type=int, default=256)
 parser.add_argument("--batch_size", help='Batch size to use during training',type=int, default=24)
@@ -161,8 +161,12 @@ def main(args):
         last_mean_loss = np.array(losses[-print_freq:]).mean()
         if epoch % print_freq == 0: print(f"\tLoss: {last_mean_loss :.2f}")
 
-        if grads_vanished_or_exploded(grads):
-            print("Gradients have vanished or exploded, exiting training run now...")
+        has_vanished,  has_exploded = grads_vanished_or_exploded(grads)
+        if has_vanished:
+            print("Gradients have vanished, exiting training run now...")
+            break
+        if has_exploded:
+            print("Gradients have exploded, exiting training run now...")
             break
 
         if epoch % save_steps == 0 and epoch != 0:
