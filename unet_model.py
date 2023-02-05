@@ -5,32 +5,32 @@ import jax.numpy as jnp
 
 class _unet(nn.Module):
     num_classes: int
-    init: str = "yilmaz_normal"
+    initializer: str = "yilmaz_normal"
 
     @nn.compact
     def __call__(self, x):
         # Scale values to be between 0-1
         x = x / 256
         # initializer = nn.initializers.normal(3.0)
-        if self.init == "he_normal":
+        if self.initializer == "he_normal":
             initializer = nn.initializers.he_normal(in_axis=-2, out_axis=-1, batch_axis=0)
-        elif self.init == "he_uniform":
+        elif self.initializer == "he_uniform":
             initializer = nn.initializers.he_uniform(in_axis=-2, out_axis=-1, batch_axis=0)
-        elif self.init == "xavier_normal":
+        elif self.initializer == "xavier_normal":
             initializer = nn.initializers.xavier_normal(in_axis=-2, out_axis=-1, batch_axis=0)
-        elif self.init == "xavier_uniform":
+        elif self.initializer == "xavier_uniform":
             initializer = nn.initializers.xavier_uniform(in_axis=-2, out_axis=-1, batch_axis=0)
-        elif self.init == "kumar_normal":
+        elif self.initializer == "kumar_normal":
             # From: https://arxiv.org/abs/1704.08863
             initializer = nn.initializers.variance_scaling(scale=3.6**2, mode="fan_avg", distribution="truncated_normal", in_axis=-2, out_axis=-1, batch_axis=0)
-        elif self.init == "yilmaz_normal":
+        elif self.initializer == "yilmaz_normal":
             # From: https://www.sciencedirect.com/science/article/abs/pii/S0893608022002040
             init1 = nn.initializers.variance_scaling(scale=8, mode="fan_avg", distribution="truncated_normal", in_axis=-2, out_axis=-1, batch_axis=0)
             init2 = nn.initializers.constant(-1)
             def initializer(*args, **kwargs):
                 return jnp.maximum(-init1(*args, **kwargs), init2(*args, **kwargs))
         else:
-            raise NotImplementedError(f"The initializer {self.init} is not supported.")
+            raise NotImplementedError(f"The initializer {self.initializer} is not supported.")
         
         ########################### Encoders ############################
         # Encoder block 1
