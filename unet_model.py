@@ -122,7 +122,7 @@ class _unet(nn.Module):
         decoder_block1 = nn.Sequential([
             nn.Conv(features=64, kernel_size=(3, 3), padding="SAME", kernel_init=initializer), jax.nn.leaky_relu,   
             nn.Conv(features=64, kernel_size=(3, 3), padding="SAME", kernel_init=initializer), jax.nn.leaky_relu, 
-            nn.Conv(features=self.num_classes, kernel_size=(1, 1), padding="SAME", kernel_init=initializer), jax.nn.softmax, #jax.nn.sigmoid,
+            nn.Conv(features=self.num_classes, kernel_size=(1, 1), padding="SAME", kernel_init=initializer), jax.nn.softmax,
         ])  
         x = decoder_block1(x)  
 
