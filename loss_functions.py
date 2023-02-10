@@ -1,6 +1,5 @@
 import jax
 import jax.numpy as jnp
-from flax.core.frozen_dict import freeze
 
 
 @jax.jit
