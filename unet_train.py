@@ -3,7 +3,7 @@ import numpy as np
 import jax
 from jax import value_and_grad
 import jax.numpy as jnp
-from flax.core.frozen_dict import freeze
+from flax.core.frozen_dict import freeze, unfreeze
 import optax
 from datasets import load_dataset
 from flax.training import train_state, checkpoints
@@ -28,15 +28,16 @@ parser.add_argument("--init_function",
                     default="yilmaz_normal", 
                     required=False)
 parser.add_argument("--rng", help="Random number generator key", default=64, type=int, required=False)
-parser.add_argument("--print_freq", help="Frequency for displaying training loss", default=10, type=int, required=False)
-parser.add_argument("--lr", help="Initial value for learning rate.", default=0.001, type=float, required=False)
-parser.add_argument("--min_lr", help="Minimum learning rate cap.", default=0.00001, type=float, required=False)
+parser.add_argument("--print_freq", help="Frequency for displaying training loss", default=1, type=int, required=False)
+parser.add_argument("--lr", help="Initial value for learning rate.", default=0.00001, type=float, required=False)
+parser.add_argument("--min_lr", help="Minimum learning rate cap.", default=0.000001, type=float, required=False)
 parser.add_argument("--decay", help="Exponential decay rate.", default=0.99, type=float, required=False)
 parser.add_argument("--decay_start", help="The epoch to start decaying the learning rate.", default=100, type=int, required=False)
 parser.add_argument("--decay_steps", help="Transition steps before next lr decay.", default=100, type=int, required=False)
 parser.add_argument("--height", help='Model image input height resolution', type=int, default=256)
 parser.add_argument("--width", help='Model image input height resolution', type=int, default=256)
 parser.add_argument("--batch_size", help='Batch size to use during training',type=int, default=24)
+parser.add_argument("--float_precision", help='Floating point precision, Options are 32 and 16.',type=int, default=32)
 parser.add_argument("--num_epochs", help='Number of training epochs', type=int, default=100000)
 parser.add_argument("--save_freq", help='Model saving frequncy per steps', type=int, default=100)
 parser.add_argument("--val_epochs", help='Frequency for running evaluation', type=int, default=500)
@@ -60,10 +61,17 @@ def main(args):
     checkpoint_dir = args.weights_path
     os.makedirs(checkpoint_dir, exist_ok=True)
 
+    if args.float_precision == 32:
+        dtype = jnp.float32
+    elif args.float_precision == 16:
+        dtype = jnp.float16
+    else:
+        raise NotImplementedError(f"Floating point precision {args.float_precision} is not supported.")
+
     # Create the model object
-    unet = _unet(num_classes, args.init_function)
+    unet = _unet(num_classes, initializer=args.init_function, dtype=dtype)
     # Display the model details
-    dummy_x = np.array(train_dataset[0]["image"])
+    dummy_x = jnp.array(train_dataset[0]["image"], dtype=dtype)
     # Downsample the image
     dummy_x = jax.image.resize(dummy_x, shape=(height, width, 3), method="bilinear")
     rng_key = jax.random.PRNGKey(args.rng)
@@ -132,7 +140,7 @@ def main(args):
                 val_inputs = []
                 # Loop until a valid batch is found
                 while len(val_inputs) == 0:
-                    val_inputs, val_targets = prep_data_batch(val_data_generator, batch_size, height, width, num_classes)
+                    val_inputs, val_targets = prep_data_batch(val_data_generator, batch_size, height, width, num_classes, dtype=jnp.float32)
                 # Perform augmentation
                 rng_key, subkey = jax.random.split(rng_key)
                 if augment: val_inputs = augment_images(subkey, val_inputs)
@@ -148,7 +156,7 @@ def main(args):
         inputs = []
         # Loop until a valid batch is found
         while len(inputs) == 0:
-            inputs, targets = prep_data_batch(train_data_generator, batch_size, height, width, num_classes)
+            inputs, targets = prep_data_batch(train_data_generator, batch_size, height, width, num_classes, dtype=jnp.float32)
         # Perform augmentation
         rng_key, subkey = jax.random.split(rng_key)
         if augment: inputs = augment_images(subkey, inputs)
@@ -159,14 +167,21 @@ def main(args):
 
         losses.append(loss)
         last_mean_loss = np.array(losses[-print_freq:]).mean()
-        if epoch % print_freq == 0: print(f"\tLoss: {last_mean_loss :.2f} \tLearning Rate: {schedule(epoch) :.6f}")
+        if epoch % print_freq == 0: print(f"\tLoss: {last_mean_loss :.2f} \tLearning Rate: {schedule(epoch) :.8f}")
 
-        has_vanished,  has_exploded = grads_vanished_or_exploded(grads)
+        has_vanished,  has_exploded, mean_grads = grads_vanished_or_exploded(
+            unfreeze(grads["params"]), 
+            max_mean_grad=1e9, 
+            min_mean_grad=1e-9
+        )
         if has_vanished:
             print("Gradients have vanished, exiting training run now...")
             break
-        if has_exploded:
+        elif has_exploded or jnp.isinf(mean_grads):
             print("Gradients have exploded, exiting training run now...")
+            break
+        elif jnp.isnan(mean_grads):
+            print("Gradients are nan, exiting training run now...")
             break
 
         if epoch % save_steps == 0 and epoch != 0:

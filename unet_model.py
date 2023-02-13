@@ -72,7 +72,7 @@ class _unet(nn.Module):
         encoder_block4 = nn.Sequential([
             nn.Conv(features=512, kernel_size=(3, 3), **conv_kwargs), nn.GroupNorm(**norm_kwargs), act,
             nn.Conv(features=512, kernel_size=(3, 3), **conv_kwargs), nn.GroupNorm(**norm_kwargs), act,
-            nn.Dropout(rate=0.3, deterministic=True)
+            nn.Dropout(rate=0.1, deterministic=True)
         ])
         encoder4 = encoder_block4(x)
         x = encoder4
@@ -81,7 +81,7 @@ class _unet(nn.Module):
         encoder_block5 = nn.Sequential([
             nn.Conv(features=1024, kernel_size=(3, 3), **conv_kwargs), nn.GroupNorm(**norm_kwargs), act,
             nn.Conv(features=1024, kernel_size=(3, 3), **conv_kwargs), nn.GroupNorm(**norm_kwargs), act,
-            nn.Dropout(rate=0.3, deterministic=True)
+            nn.Dropout(rate=0.1, deterministic=True)
         ])
         x = encoder_block5(x)
 
