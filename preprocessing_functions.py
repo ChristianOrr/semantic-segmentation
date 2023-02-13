@@ -77,12 +77,25 @@ def prep_data_batch(data_generator, batch_size, height, width, num_classes, dtyp
     return inputs, targets
 
 
-@jax.jit
-def grads_vanished_or_exploded(grads, max_mean_grad, min_mean_grad):
+def find_mean_grads(layers, layers_type, mean_grads):
+    """
+    Helper function for grads_vanished_or_exploded.
+    Recursively traverses through the layers until
+    it reaches the weights, then adds the mean weight
+    to the mean_grads list.
+    """
+    if layers_type == dict:
+        for layer in layers.values():
+            find_mean_grads(layer, type(layer), mean_grads)
+    else:
+        mean_grads.append(layers.mean())
+    
+
+def grads_vanished_or_exploded(params, max_mean_grad, min_mean_grad):
     """
     Checks if the gradients have vanished or exploded.
     Args:
-        grads: The gradinents from the loss function.
+        params: The model weight gradinents from the loss function.
         max_mean_grad: Maximum mean gradient allowed before 
             being considered as expoding gradients. 
         min_mean_grad: Minimum mean gradient allowed before 
@@ -92,14 +105,9 @@ def grads_vanished_or_exploded(grads, max_mean_grad, min_mean_grad):
         has_exploded: Boolean, True for exploded gradients, false otherwise. 
         mean_grads: Mean gradients value.
     """
-    params = grads["params"]
     mean_grads = []
 
-    for layer in params.values():
-        for weights in layer.values():
-            # Check minimum weight and update if necessary
-            layer_mean = weights.mean()
-            mean_grads.append(layer_mean)
+    find_mean_grads(params, type(params), mean_grads)
 
     mean_grads = jnp.absolute(jnp.array(mean_grads).mean())
     has_vanished = mean_grads < min_mean_grad
