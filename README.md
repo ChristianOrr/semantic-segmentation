@@ -7,7 +7,10 @@ The segmentation models are trained on RGB images from the scene parse 150 datas
 ## Algorithms
 
 ### U-Net
-U-Net uses the same ideas from the Fully Convolutional Network (FCN) and improves upon them. The main idea is to use an encoder-decoder architecture with skip connections from the encoder layers to the decoder layers. This provides global and local information to the final segmentation layers, which improves the classification and localization in the predicted segmentation. U-Net has a symetric architecture, giving it the U shape it was named after. It's simpler to implement than FCN and is also very fast. This has made U-Net one of the most popular segmentation models today. 
+U-Net uses the same ideas from the Fully Convolutional Network (FCN) and improves upon them. The main idea is to use an encoder-decoder architecture with skip connections from the encoder layers to the decoder layers. This provides global and local information to the final segmentation layers, which improves the classification and localization in the predicted segmentation. U-Net has a symetric architecture, giving it the U shape it was named after. It's simpler to implement than FCN and is also very fast. This made U-Net one of the most popular segmentation models today. 
+
+### PSPNet
+PSPNet was designed to solve the lack of global scene understanding faced by FCN. It uses a pyramid pooling module (PPM) combined with a pretrained resnet backbone to extract global context information. PPM pools the feature map extracted from the backbone into feature maps with difference scales. The scaled feature maps are then fused, upsampled and then processed by a final convolutional module, then upsamepled again to extract the segmentation mask. The lowest resolution PPM feature maps will contain the coarsest information, which is ideal for understanding global information. While the highest resolution feature maps will contain local information, which is ideal for localizing the objects.
 
 
 
