@@ -1,10 +1,11 @@
 import jax
 import flax.linen as nn
 import jax.numpy as jnp
+import resnet_models_bn
 import resnet_models
 from model_functions import get_initializer
 from functools import partial
-from typing import Any, Callable, Sequence, Tuple
+from typing import Any, Callable
 ModuleDef = Any
 
 
@@ -14,6 +15,7 @@ class _pspnet(nn.Module):
     act: Callable = nn.relu
     backbone: str = "ResNet50"
     bins: tuple[tuple] = ((1, 1), (2, 2), (3, 3), (6, 6))
+    use_bn: bool = False
     dtype: Any = jnp.float32
 
     @nn.compact
@@ -30,7 +32,12 @@ class _pspnet(nn.Module):
         pool_kwargs = {"padding":"VALID", "count_include_pad":True}
 
         ########################### Feature Map ############################
-        backbone = getattr(resnet_models, self.backbone)
+        if self.use_bn:
+            resnet_models_import = resnet_models_bn
+        else:
+            resnet_models_import = resnet_models
+
+        backbone = getattr(resnet_models_import, self.backbone)
         feature_map = backbone()(x)
         batch_size, height_features, width_features, channel_features = feature_map.shape
 
