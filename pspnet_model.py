@@ -2,6 +2,7 @@ import jax
 import flax.linen as nn
 import jax.numpy as jnp
 import resnet_models
+from model_functions import get_initializer
 from functools import partial
 from typing import Any, Callable, Sequence, Tuple
 ModuleDef = Any
@@ -21,27 +22,7 @@ class _pspnet(nn.Module):
         x = jnp.array(x / 256, dtype=self.dtype)
         height, width = x.shape[-3], x.shape[-2] 
 
-        # Select the initializer
-        init_kwargs = {"in_axis":-2, "out_axis":-1, "batch_axis":0, "dtype": self.dtype}
-        if self.initializer == "he_normal":
-            initializer = nn.initializers.he_normal(**init_kwargs)
-        elif self.initializer == "he_uniform":
-            initializer = nn.initializers.he_uniform(**init_kwargs)
-        elif self.initializer == "xavier_normal":
-            initializer = nn.initializers.xavier_normal(**init_kwargs)
-        elif self.initializer == "xavier_uniform":
-            initializer = nn.initializers.xavier_uniform(**init_kwargs)
-        elif self.initializer == "kumar_normal":
-            # From: https://arxiv.org/abs/1704.08863
-            initializer = nn.initializers.variance_scaling(scale=3.6**2, mode="fan_avg", distribution="truncated_normal", **init_kwargs)
-        elif self.initializer == "yilmaz_normal":
-            # From: https://www.sciencedirect.com/science/article/abs/pii/S0893608022002040
-            init1 = nn.initializers.variance_scaling(scale=8, mode="fan_avg", distribution="truncated_normal", **init_kwargs)
-            init2 = nn.initializers.constant(-1)
-            def initializer(*args, **kwargs):
-                return jnp.maximum(-init1(*args, **kwargs), init2(*args, **kwargs))
-        else:
-            raise NotImplementedError(f"The initializer {self.initializer} is not supported.")
+        initializer = get_initializer(self.initializer, self.dtype)
 
         act = self.act
         conv_kwargs = {"padding":"SAME", "kernel_init":initializer, "use_bias":False, "dtype": self.dtype}
