@@ -13,7 +13,7 @@ def loss_fn(
     num_classes, 
     loss_method="cross_entropy", 
     ignore_label=0, 
-    weight_decay=4e-5, 
+    weight_decay=1e-7, 
     epsilon=1e-15
 ):
     """
