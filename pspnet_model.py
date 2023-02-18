@@ -75,5 +75,4 @@ class _pspnet(nn.Module):
             shape=(batch_size, height, width, self.num_classes), 
             method="bilinear"
         )
-        x = jax.nn.softmax(x)
         return x
