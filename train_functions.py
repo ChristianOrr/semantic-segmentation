@@ -40,7 +40,7 @@ def train(args, model, dtype):
         augmax.RandomBrightness(range=(-0.6, 0.6), p=1.0),
     ))
 
-    base_lr = args.lr * args.batch_size / 256.0
+    base_lr = args.lr * args.batch_size / 100.0
     # Exponential decay learning rate schedule defined by:
     # learning_rate * decay_rate ^ (global_step / decay_steps)
     schedule = optax.exponential_decay(
@@ -152,7 +152,7 @@ def train(args, model, dtype):
             print("Gradients are nan, exiting training run now...")
             break
 
-        if epoch % args.save_steps == 0 and epoch != 0:
+        if epoch % args.save_freq == 0 and epoch != 0:
             checkpoints.save_checkpoint(
                 ckpt_dir=checkpoint_dir, 
                 target=state, 
