@@ -57,20 +57,32 @@ def train(args, model, dtype):
     orbax_checkpointer = orbax.Checkpointer(orbax.PyTreeCheckpointHandler())
 
     variables = model.init(rng_key, dummy_x)
+
+    if restore_latest:
+        restored_state = checkpoints.restore_checkpoint(
+            ckpt_dir=checkpoint_dir, 
+            target=None, 
+            orbax_checkpointer=orbax_checkpointer
+        )
+
+        if args.drop_final_layer:
+            variables = unfreeze(variables)
+            restored_params = unfreeze(restored_state["params"])
+            restored_params.pop("final_layer", None)
+            last_layer = variables["params"]["final_layer"]
+            variables["params"] = restored_params
+            variables["params"]["final_layer"] = last_layer
+            variables = freeze(variables)
+
+
     state = train_state.TrainState.create(
         apply_fn=model.apply,
         params=variables['params'], 
         tx=optimizer,
     )
 
-    if restore_latest:
-        state = checkpoints.restore_checkpoint(
-            ckpt_dir=checkpoint_dir, 
-            target=state, 
-            orbax_checkpointer=orbax_checkpointer
-        )
     # epoch_offset > 0 if restarting from checkpoint
-    epoch_offset = int(state.step)
+    epoch_offset = int(restored_state.step)
 
     train_data_generator = create_infinite_generator(train_dataset)
     val_data_generator = create_infinite_generator(val_dataset)

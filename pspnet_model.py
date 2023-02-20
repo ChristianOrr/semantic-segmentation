@@ -66,7 +66,7 @@ class _pspnet(nn.Module):
             nn.GroupNorm(**norm_kwargs), 
             act,
             nn.Dropout(rate=0.1, deterministic=True),
-            nn.Conv(features=self.num_classes, kernel_size=(1, 1), **conv_kwargs)
+            nn.Conv(features=self.num_classes, kernel_size=(1, 1), name="final_layer", **conv_kwargs)
         ])(x)
 
 

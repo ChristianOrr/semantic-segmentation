@@ -106,7 +106,7 @@ class _unet(nn.Module):
         decoder_block1 = nn.Sequential([
             nn.Conv(features=64, kernel_size=(3, 3), **conv_kwargs), nn.GroupNorm(**norm_kwargs), act,   
             nn.Conv(features=64, kernel_size=(3, 3), **conv_kwargs), act, 
-            nn.Conv(features=self.num_classes, kernel_size=(1, 1), **conv_kwargs) #, jax.nn.softmax,
+            nn.Conv(features=self.num_classes, kernel_size=(1, 1), name="final_layer", **conv_kwargs)
         ])  
         x = decoder_block1(x)  
 
